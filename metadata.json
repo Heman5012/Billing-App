@@ -1,0 +1,8 @@
+{
+  "name": "BillWave — Smart Billing & Invoice Management",
+  "description": "Smart retail billing, barcode scanning, POS checkout, invoice printing, inventory tracking, and sales analytics.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
