@@ -1,0 +1,502 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model & Schema Definitions
+    // ===============================================================
+    //
+    // Collection: users/{userId}
+    // Document ID: Firebase Auth UID
+    // Fields:
+    //   - displayName: string (optional, 0-100 chars)
+    //   - email: string (required, 0-150 chars)
+    //   - photoURL: string (optional, 0-1000 chars)
+    //   - createdAt: timestamp (required, immutable)
+    //   - lastLoginAt: timestamp (required)
+    //
+    // Collection: users/{userId}/products/{productId} & products/{productId}
+    // Document ID: Auto-generated Firestore ID or Barcode string
+    // Fields:
+    //   - name: string (required, 1-200 chars)
+    //   - sku: string (optional, 0-100 chars)
+    //   - barcode: string (optional, 0-100 chars)
+    //   - price: number (required, >= 0, <= 100,000,000)
+    //   - stock: number (optional, >= 0, <= 10,000,000)
+    //   - taxRate: number (optional, >= 0, <= 100)
+    //   - taxPercent: number (optional, >= 0, <= 100)
+    //   - category: string (optional, 0-100 chars)
+    //   - brand: string (optional, 0-100 chars)
+    //   - imageUrl: string (optional, 0-1000 chars)
+    //   - description: string (optional, 0-2000 chars)
+    //   - unit: string (optional, 0-50 chars)
+    //   - costPrice: number (optional, >= 0, <= 100,000,000)
+    //   - quantity: number (optional, >= 0, <= 10,000,000)
+    //   - hsnCode: string (optional, 0-50 chars)
+    //   - createdAt: timestamp | string | number (optional/flexible date, immutable)
+    //   - updatedAt: timestamp | string | number (optional/flexible date)
+    //   - id: string (optional, 0-100 chars)
+    //   - userId: string (optional, 0-100 chars)
+    //   - discount: number (optional, >= 0, <= 100,000,000)
+    //   - searchKeywords: list | string (optional)
+    //
+    // Collection: users/{userId}/bills/{billId} & bills/{billId}
+    // Document ID: Auto-generated Firestore ID
+    // Fields:
+    //   - billNumber / invoiceNumber: string (at least one required, 1-50 chars, immutable)
+    //   - userId: string (required, matches owner UID, immutable)
+    //   - customer / customerName: map / string (optional)
+    //   - items: list (required, 1-500 items)
+    //   - subtotal: number (required, >= 0)
+    //   - overallDiscountPercent / overallDiscountAmount / discount: number (optional, >= 0)
+    //   - taxableAmount: number (optional, >= 0)
+    //   - tax / taxAmount: number (optional, >= 0)
+    //   - taxBreakdown: map (optional)
+    //   - total: number (required, >= 0)
+    //   - paymentMethod: string (required, 1-50 chars)
+    //   - paymentStatus / status: string (optional)
+    //   - transactionMode: string (optional, 0-50 chars)
+    //   - notes: string (optional, 0-1000 chars)
+    //   - createdAt: timestamp | string | number (required, immutable)
+    //   - updatedAt: timestamp | string | number (optional)
+    //   - shareToken: string (optional, 0-64 chars, immutable)
+    //   - cancellationReason: string (optional, 0-500 chars)
+    //   - cancelledAt: timestamp | string | number (optional)
+    //   - businessName: string (optional, 0-200 chars)
+    //   - id / billId: string (optional, 0-100 chars)
+    //
+    // Collection: users/{userId}/invoices/{invoiceId}
+    // Document ID: Auto-generated Firestore ID
+    // Fields:
+    //   - invoiceNumber: string (required, 1-50 chars, immutable)
+    //   - userId: string (required, matches userId, immutable)
+    //   - customer: map (required, keys: name, phone, email)
+    //   - items: list (required, 1-500 items)
+    //   - subtotal: number (required, >= 0)
+    //   - overallDiscountPercent: number (optional, >= 0, <= 100)
+    //   - overallDiscountAmount: number (optional, >= 0)
+    //   - taxableAmount: number (required, >= 0)
+    //   - tax: number (required, >= 0)
+    //   - taxBreakdown: map (optional)
+    //   - total: number (required, >= 0)
+    //   - paymentMethod: string (required, 1-50 chars)
+    //   - paymentStatus: string (required, in ['paid', 'failed', 'cancelled', 'pending'])
+    //   - transactionMode: string (optional, 0-50 chars)
+    //   - notes: string (optional, 0-1000 chars)
+    //   - createdAt: timestamp | string | number (required, immutable)
+    //   - shareToken: string (required, 1-64 chars, immutable)
+    //   - cancellationReason: string (optional, 0-500 chars)
+    //   - cancelledAt: timestamp | string | number (optional)
+    //
+    // Collection: users/{userId}/settings/business
+    // Document ID: 'business'
+    // Fields:
+    //   - businessName: string (required, 1-200 chars)
+    //   - address: string (optional, 0-500 chars)
+    //   - phone: string (optional, 0-50 chars)
+    //   - currency: string (required, 1-10 chars)
+    //   - configuredTaxRates: list of numbers (required, 0-20 items)
+    //   - createdAt: timestamp (optional)
+    //   - updatedAt: timestamp (optional)
+    //
+    // Collection: public_invoices/{shareToken}
+    // Document ID: 32-64 character unguessable share token string
+    // Fields:
+    //   - invoiceNumber: string (required, 1-50 chars, immutable)
+    //   - businessName: string (required, 1-200 chars)
+    //   - customerName: string (optional, 0-100 chars)
+    //   - items: list of maps (required, 1-500 items)
+    //   - subtotal: number (required, >= 0)
+    //   - overallDiscountAmount: number (optional, >= 0)
+    //   - taxableAmount: number (required, >= 0)
+    //   - tax: number (required, >= 0)
+    //   - taxBreakdown: map (optional)
+    //   - total: number (required, >= 0)
+    //   - paymentMethod: string (required, 1-50 chars)
+    //   - paymentStatus: string (required, in ['paid', 'failed', 'cancelled', 'pending'])
+    //   - transactionMode: string (optional, 0-50 chars)
+    //   - notes: string (optional, 0-1000 chars)
+    //   - createdAt: timestamp | string | number (required, immutable)
+    //   - shareToken: string (required, matches doc ID, 1-64 chars, immutable)
+    //   - cancellationReason: string (optional, 0-500 chars)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user is the resource owner by UID
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Validate required fields exist in document
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // Validate document contains only allowed fields
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // Verify that specified immutable fields were not altered during update
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // Validate email format
+    function isValidEmail(email) {
+      return email is string &&
+        email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+
+    // Validate optional string: if present, must be string and within length bounds
+    function isValidOptionalString(field, minLen, maxLen) {
+      return !(field in request.resource.data) ||
+             (request.resource.data[field] is string &&
+              request.resource.data[field].size() >= minLen &&
+              request.resource.data[field].size() <= maxLen);
+    }
+
+    // Validate optional number: if present, must be number and within value bounds
+    function isValidOptionalNumber(field, minVal, maxVal) {
+      return !(field in request.resource.data) ||
+             (request.resource.data[field] is number &&
+              request.resource.data[field] >= minVal &&
+              request.resource.data[field] <= maxVal);
+    }
+
+    // Validate optional map: if present, must be a map
+    function isValidOptionalMap(field) {
+      return !(field in request.resource.data) || request.resource.data[field] is map;
+    }
+
+    // Validate optional timestamp: if present, must be a timestamp
+    function isValidOptionalTimestamp(field) {
+      return !(field in request.resource.data) || request.resource.data[field] is timestamp;
+    }
+
+    // Validate flexible date: timestamp, string (ISO8601), or numeric epoch
+    function isValidFlexibleDate(field) {
+      return !(field in request.resource.data) ||
+             request.resource.data[field] is timestamp ||
+             (request.resource.data[field] is string && request.resource.data[field].size() <= 100) ||
+             request.resource.data[field] is number;
+    }
+
+    // Validate customer map structure
+    function isValidCustomer(cust) {
+      return cust is map &&
+             cust.keys().hasOnly(['name', 'phone', 'email']) &&
+             (!('name' in cust) || (cust.name is string && cust.name.size() <= 100)) &&
+             (!('phone' in cust) || (cust.phone is string && cust.phone.size() <= 30)) &&
+             (!('email' in cust) || (cust.email is string && cust.email.size() <= 150));
+    }
+
+    // Check product createdAt immutability on update:
+    // If createdAt exists in resource.data, it must either remain unchanged,
+    // be unaffected by the update, or omitted from request payload.
+    function isProductCreatedAtUnchanged() {
+      return !('createdAt' in resource.data) ||
+             !('createdAt' in request.resource.data) ||
+             !request.resource.data.diff(resource.data).affectedKeys().hasAny(['createdAt']) ||
+             request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    // Check bill immutable fields on update
+    function areBillImmutableFieldsUnchanged() {
+      return (!('userId' in resource.data) || !('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId) &&
+             (!('billNumber' in resource.data) || !('billNumber' in request.resource.data) || request.resource.data.billNumber == resource.data.billNumber) &&
+             (!('invoiceNumber' in resource.data) || !('invoiceNumber' in request.resource.data) || request.resource.data.invoiceNumber == resource.data.invoiceNumber) &&
+             (!('createdAt' in resource.data) || !('createdAt' in request.resource.data) || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['createdAt']) || request.resource.data.createdAt == resource.data.createdAt) &&
+             (!('shareToken' in resource.data) || !('shareToken' in request.resource.data) || request.resource.data.shareToken == resource.data.shareToken);
+    }
+
+    // ===============================================================
+    // Domain Validators (Enforced on both create and update)
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasRequiredFields(['email', 'createdAt', 'lastLoginAt']) &&
+             hasOnlyAllowedFields(['displayName', 'email', 'photoURL', 'createdAt', 'lastLoginAt']) &&
+             data.email is string &&
+             data.email.size() <= 150 &&
+             (data.email == '' || isValidEmail(data.email)) &&
+             data.createdAt is timestamp &&
+             data.lastLoginAt is timestamp &&
+             isValidOptionalString('displayName', 0, 100) &&
+             isValidOptionalString('photoURL', 0, 1000);
+    }
+
+    function isValidProduct(data) {
+      return hasRequiredFields(['name', 'price']) &&
+             hasOnlyAllowedFields([
+               'name', 'sku', 'barcode', 'price', 'stock', 'taxRate', 'taxPercent',
+               'category', 'brand', 'imageUrl', 'description', 'unit',
+               'costPrice', 'quantity', 'hsnCode', 'createdAt', 'updatedAt',
+               'id', 'userId', 'discount', 'searchKeywords'
+             ]) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             data.price is number && data.price >= 0 && data.price <= 100000000 &&
+             isValidOptionalNumber('stock', 0, 10000000) &&
+             isValidOptionalNumber('taxRate', 0, 100) &&
+             isValidOptionalNumber('taxPercent', 0, 100) &&
+             isValidOptionalString('sku', 0, 100) &&
+             isValidOptionalString('barcode', 0, 100) &&
+             isValidOptionalString('category', 0, 100) &&
+             isValidOptionalString('brand', 0, 100) &&
+             isValidOptionalString('imageUrl', 0, 1000) &&
+             isValidOptionalString('description', 0, 2000) &&
+             isValidOptionalString('unit', 0, 50) &&
+             isValidOptionalNumber('costPrice', 0, 100000000) &&
+             isValidOptionalNumber('quantity', 0, 10000000) &&
+             isValidOptionalString('hsnCode', 0, 50) &&
+             isValidOptionalString('id', 0, 100) &&
+             isValidOptionalString('userId', 0, 100) &&
+             isValidOptionalNumber('discount', 0, 100000000) &&
+             (!('searchKeywords' in request.resource.data) ||
+              (request.resource.data.searchKeywords is list && request.resource.data.searchKeywords.size() <= 100) ||
+              request.resource.data.searchKeywords is string) &&
+             isValidFlexibleDate('createdAt') &&
+             isValidFlexibleDate('updatedAt');
+    }
+
+    // Product update validator: same field checks but WITHOUT hasOnlyAllowedFields,
+    // because Firestore's .update() merges with existing data and legacy/extra
+    // existing fields must not block valid partial updates.
+    function isValidProductUpdate(data) {
+      return hasRequiredFields(['name', 'price']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             data.price is number && data.price >= 0 && data.price <= 100000000 &&
+             isValidOptionalNumber('stock', 0, 10000000) &&
+             isValidOptionalNumber('taxRate', 0, 100) &&
+             isValidOptionalNumber('taxPercent', 0, 100) &&
+             isValidOptionalString('sku', 0, 100) &&
+             isValidOptionalString('barcode', 0, 100) &&
+             isValidOptionalString('category', 0, 100) &&
+             isValidOptionalString('brand', 0, 100) &&
+             isValidOptionalString('imageUrl', 0, 1000) &&
+             isValidOptionalString('description', 0, 2000) &&
+             isValidOptionalString('unit', 0, 50) &&
+             isValidOptionalNumber('costPrice', 0, 100000000) &&
+             isValidOptionalNumber('quantity', 0, 10000000) &&
+             isValidOptionalString('hsnCode', 0, 50) &&
+             isValidOptionalString('id', 0, 100) &&
+             isValidOptionalString('userId', 0, 100) &&
+             isValidOptionalNumber('discount', 0, 100000000) &&
+             (!('searchKeywords' in request.resource.data) ||
+              (request.resource.data.searchKeywords is list && request.resource.data.searchKeywords.size() <= 100) ||
+              request.resource.data.searchKeywords is string) &&
+             isValidFlexibleDate('createdAt') &&
+             isValidFlexibleDate('updatedAt');
+    }
+
+    function isValidBill(data, userId) {
+      return hasOnlyAllowedFields([
+               'billNumber', 'invoiceNumber', 'userId', 'customer', 'customerName',
+               'customerPhone', 'customerEmail', 'items', 'subtotal',
+               'overallDiscountPercent', 'overallDiscountAmount', 'discount',
+               'taxableAmount', 'tax', 'taxAmount', 'taxBreakdown',
+               'total', 'paymentMethod', 'paymentStatus', 'status', 'transactionMode',
+               'notes', 'createdAt', 'updatedAt', 'shareToken', 'cancellationReason',
+               'cancelledAt', 'businessName', 'id', 'billId'
+             ]) &&
+             data.userId == userId &&
+             ('billNumber' in data || 'invoiceNumber' in data) &&
+             isValidOptionalString('billNumber', 1, 50) &&
+             isValidOptionalString('invoiceNumber', 1, 50) &&
+             data.items is list && data.items.size() > 0 && data.items.size() <= 500 &&
+             data.subtotal is number && data.subtotal >= 0 &&
+             data.total is number && data.total >= 0 &&
+             data.paymentMethod is string && data.paymentMethod.size() > 0 && data.paymentMethod.size() <= 50 &&
+             (!('paymentStatus' in data) || data.paymentStatus in ['paid', 'failed', 'cancelled', 'pending']) &&
+             (!('status' in data) || data.status in ['paid', 'failed', 'cancelled', 'pending', 'active', 'completed']) &&
+             (!('customer' in data) || isValidCustomer(data.customer)) &&
+             isValidOptionalString('customerName', 0, 100) &&
+             isValidOptionalString('customerPhone', 0, 30) &&
+             isValidOptionalString('customerEmail', 0, 150) &&
+             isValidOptionalString('businessName', 0, 200) &&
+             isValidOptionalNumber('overallDiscountPercent', 0, 100) &&
+             isValidOptionalNumber('overallDiscountAmount', 0, 100000000) &&
+             isValidOptionalNumber('discount', 0, 100000000) &&
+             isValidOptionalNumber('taxableAmount', 0, 100000000) &&
+             isValidOptionalNumber('tax', 0, 100000000) &&
+             isValidOptionalNumber('taxAmount', 0, 100000000) &&
+             isValidOptionalMap('taxBreakdown') &&
+             isValidOptionalString('transactionMode', 0, 50) &&
+             isValidOptionalString('notes', 0, 1000) &&
+             isValidOptionalString('cancellationReason', 0, 500) &&
+             isValidOptionalString('shareToken', 0, 64) &&
+             isValidOptionalString('id', 0, 100) &&
+             isValidOptionalString('billId', 0, 100) &&
+             isValidFlexibleDate('createdAt') &&
+             isValidFlexibleDate('updatedAt') &&
+             isValidFlexibleDate('cancelledAt');
+    }
+
+    function isValidInvoice(data, userId) {
+      return hasRequiredFields(['invoiceNumber', 'userId', 'customer', 'items', 'subtotal', 'total', 'paymentMethod', 'paymentStatus', 'createdAt', 'shareToken']) &&
+             hasOnlyAllowedFields(['invoiceNumber', 'userId', 'customer', 'items', 'subtotal', 'overallDiscountPercent', 'overallDiscountAmount', 'taxableAmount', 'tax', 'taxBreakdown', 'total', 'paymentMethod', 'paymentStatus', 'transactionMode', 'notes', 'createdAt', 'shareToken', 'cancellationReason', 'cancelledAt']) &&
+             data.invoiceNumber is string && data.invoiceNumber.size() > 0 && data.invoiceNumber.size() <= 50 &&
+             data.userId == userId &&
+             isValidCustomer(data.customer) &&
+             data.items is list && data.items.size() > 0 && data.items.size() <= 500 &&
+             data.subtotal is number && data.subtotal >= 0 &&
+             isValidOptionalNumber('overallDiscountPercent', 0, 100) &&
+             isValidOptionalNumber('overallDiscountAmount', 0, 100000000) &&
+             isValidOptionalNumber('taxableAmount', 0, 100000000) &&
+             isValidOptionalNumber('tax', 0, 100000000) &&
+             isValidOptionalMap('taxBreakdown') &&
+             data.total is number && data.total >= 0 &&
+             data.paymentMethod is string && data.paymentMethod.size() > 0 && data.paymentMethod.size() <= 50 &&
+             data.paymentStatus is string && data.paymentStatus in ['paid', 'failed', 'cancelled', 'pending'] &&
+             isValidOptionalString('transactionMode', 0, 50) &&
+             isValidOptionalString('notes', 0, 1000) &&
+             isValidOptionalString('cancellationReason', 0, 500) &&
+             isValidFlexibleDate('cancelledAt') &&
+             isValidFlexibleDate('createdAt') &&
+             data.shareToken is string && data.shareToken.size() > 0 && data.shareToken.size() <= 64;
+    }
+
+    function isValidBusinessProfile(data) {
+      return hasRequiredFields(['businessName', 'currency', 'configuredTaxRates']) &&
+             hasOnlyAllowedFields(['businessName', 'address', 'phone', 'currency', 'configuredTaxRates', 'createdAt', 'updatedAt']) &&
+             data.businessName is string && data.businessName.size() > 0 && data.businessName.size() <= 200 &&
+             data.currency is string && data.currency.size() > 0 && data.currency.size() <= 10 &&
+             data.configuredTaxRates is list && data.configuredTaxRates.size() <= 20 &&
+             isValidOptionalString('address', 0, 500) &&
+             isValidOptionalString('phone', 0, 50) &&
+             isValidOptionalTimestamp('createdAt') &&
+             isValidOptionalTimestamp('updatedAt');
+    }
+
+    function isValidPublicInvoice(data) {
+      return hasRequiredFields(['invoiceNumber', 'businessName', 'customerName', 'items', 'subtotal', 'total', 'paymentMethod', 'paymentStatus', 'createdAt', 'shareToken']) &&
+             hasOnlyAllowedFields(['invoiceNumber', 'businessName', 'customerName', 'items', 'subtotal', 'overallDiscountAmount', 'taxableAmount', 'tax', 'taxBreakdown', 'total', 'paymentMethod', 'paymentStatus', 'transactionMode', 'notes', 'createdAt', 'shareToken', 'cancellationReason']) &&
+             data.invoiceNumber is string && data.invoiceNumber.size() > 0 && data.invoiceNumber.size() <= 50 &&
+             data.businessName is string && data.businessName.size() > 0 && data.businessName.size() <= 200 &&
+             data.customerName is string && data.customerName.size() <= 100 &&
+             data.items is list && data.items.size() > 0 && data.items.size() <= 500 &&
+             data.subtotal is number && data.subtotal >= 0 &&
+             isValidOptionalNumber('overallDiscountAmount', 0, 100000000) &&
+             isValidOptionalNumber('taxableAmount', 0, 100000000) &&
+             isValidOptionalNumber('tax', 0, 100000000) &&
+             isValidOptionalMap('taxBreakdown') &&
+             data.total is number && data.total >= 0 &&
+             data.paymentMethod is string && data.paymentMethod.size() > 0 && data.paymentMethod.size() <= 50 &&
+             data.paymentStatus is string && data.paymentStatus in ['paid', 'failed', 'cancelled', 'pending'] &&
+             isValidOptionalString('transactionMode', 0, 50) &&
+             isValidOptionalString('notes', 0, 1000) &&
+             isValidOptionalString('cancellationReason', 0, 500) &&
+             isValidFlexibleDate('createdAt') &&
+             data.shareToken is string && data.shareToken.size() > 0 && data.shareToken.size() <= 64;
+    }
+
+    // ===============================================================
+    // Collection Match Rules
+    // ===============================================================
+
+    // -------------------------------------------------------------
+    // User Profile and Scoped Subcollections
+    // -------------------------------------------------------------
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && areImmutableFieldsUnchanged(['createdAt', 'email']);
+      allow delete: if isOwner(userId);
+
+      // Product Catalog Subcollection
+      match /products/{productId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidProduct(request.resource.data);
+        allow update: if isOwner(userId) &&
+                        isValidProductUpdate(request.resource.data) &&
+                        isProductCreatedAtUnchanged();
+        allow delete: if isOwner(userId);
+      }
+
+      // Bills Subcollection (Financial records: Deletion strictly prohibited)
+      match /bills/{billId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidBill(request.resource.data, userId);
+        allow update: if isOwner(userId) &&
+                        isValidBill(request.resource.data, userId) &&
+                        areBillImmutableFieldsUnchanged();
+        allow delete: if false;
+      }
+
+      // Invoices Subcollection (Financial records: Deletion strictly prohibited)
+      match /invoices/{invoiceId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidInvoice(request.resource.data, userId);
+        allow update: if isOwner(userId) &&
+                        isValidInvoice(request.resource.data, userId) &&
+                        areImmutableFieldsUnchanged(['invoiceNumber', 'userId', 'createdAt', 'shareToken']);
+        allow delete: if false;
+      }
+
+      // Store Business Profile & Settings
+      match /settings/business {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidBusinessProfile(request.resource.data);
+        allow update: if isOwner(userId) && isValidBusinessProfile(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Root Products Collection (Global catalog / POS barcode lookup)
+    // -------------------------------------------------------------
+    match /products/{productId} {
+      // Allow read access (both authenticated users and public verification read)
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidProduct(request.resource.data);
+      allow update: if isAuthenticated() &&
+                      isValidProductUpdate(request.resource.data) &&
+                      isProductCreatedAtUnchanged();
+      allow delete: if isAuthenticated();
+    }
+
+    // -------------------------------------------------------------
+    // Root Bills Collection (QR verification and direct access)
+    // -------------------------------------------------------------
+    match /bills/{billId} {
+      // Authenticated owner can read their bills; public or signed-in read allowed for QR verification
+      allow read: if true;
+      allow create: if isAuthenticated() &&
+                      request.resource.data.userId == request.auth.uid &&
+                      isValidBill(request.resource.data, request.auth.uid);
+      allow update: if isAuthenticated() &&
+                      resource.data.userId == request.auth.uid &&
+                      isValidBill(request.resource.data, request.auth.uid) &&
+                      areBillImmutableFieldsUnchanged();
+      allow delete: if false;
+    }
+
+    // -------------------------------------------------------------
+    // Public Sanitized Invoices (Read-only retrieval via shareToken)
+    // -------------------------------------------------------------
+    match /public_invoices/{shareToken} {
+      // Read-only for anyone with the valid shareToken document ID
+      allow read: if true;
+      allow create: if isAuthenticated() && request.resource.data.shareToken == shareToken && isValidPublicInvoice(request.resource.data);
+      allow update: if isAuthenticated() && isValidPublicInvoice(request.resource.data) && areImmutableFieldsUnchanged(['invoiceNumber', 'createdAt', 'shareToken']);
+      allow delete: if false;
+    }
+
+    // -------------------------------------------------------------
+    // Default Deny Root Fallback
+    // -------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

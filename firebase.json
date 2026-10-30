@@ -1,0 +1,61 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "billing-and-invoice-fe416",
+          "appId": "1:993029568453:android:18a328260fbef5ec083dac",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "billing-and-invoice-fe416",
+          "appId": "1:993029568453:ios:8ab2ea21fa2bd5e7083dac",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "macos": {
+        "default": {
+          "projectId": "billing-and-invoice-fe416",
+          "appId": "1:993029568453:ios:8ab2ea21fa2bd5e7083dac",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "billing-and-invoice-fe416",
+          "configurations": {
+            "android": "1:993029568453:android:18a328260fbef5ec083dac",
+            "ios": "1:993029568453:ios:8ab2ea21fa2bd5e7083dac",
+            "macos": "1:993029568453:ios:8ab2ea21fa2bd5e7083dac",
+            "web": "1:993029568453:web:9a7ee48ce9166ea3083dac",
+            "windows": "1:993029568453:web:fd43926d9d8a31bf083dac"
+          }
+        }
+      }
+    }
+  },
+  "database": {
+    "rules": "database.rules.json"
+  }
+}
