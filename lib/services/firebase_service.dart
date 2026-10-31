@@ -44,6 +44,14 @@ class FirebaseService {
     return _firestore.collection('products');
   }
 
+  Stream<List<Product>> streamProducts(String uid) {
+    late final StreamController<List<Product>> controller;
+    StreamSubscription? subRoot;
+    StreamSubscription? subUser;
+
+    List<Product> rootProducts = [];
+    List<Product> userProducts = [];
+
   // Baseline 10 FMCG sample products (guarantees phone barcode scanning and offline demo always work)
   static final Map<String, Product> builtInSampleProducts = {
     '8901030895458': Product(
@@ -188,15 +196,7 @@ class FirebaseService {
     ),
   };
 
-  Stream<List<Product>> streamProducts(String uid) {
-    late final StreamController<List<Product>> controller;
-    StreamSubscription? subRoot;
-    StreamSubscription? subUser;
-
-    List<Product> rootProducts = [];
-    List<Product> userProducts = [];
-
-    void emitMerged() {
+  void emitMerged() {
     if (controller.isClosed) return;
     final Map<String, Product> productMap = {};
 
@@ -289,41 +289,32 @@ class FirebaseService {
       '2001582909253031': '8901030895458',
       '125151012228': '8901030895458',
       // 2. Shampoo
-      '9182218122925': '8901491101205',
       '191717442211': '8901491101205',
       '701211011228': '8901491101205',
       // 3. Toothpaste
       '7901715100012': '8901719100012',
-      '6705221059212': '8901719100012',
       '2225225059222': '8901719100012',
-      '185221059218': '8901719100012',
       '125221050211': '8901719100012',
       '8105221019212': '8901719100012',
       // 4. Biscuits
       '121115444111': '8901725000018',
       '2122281211222': '8901725000018',
       // 5. Rice 1 kg
-      '725149001199': '8901063012345',
       '50211579': '8901063012345',
       // 6. Cooking Oil 1 L
-      '182121992225': '8901764012340',
       '225110012228': '8901764012340',
       '721111011128': '8901764012340',
       '105110012728': '8901764012340',
       '1122121021111': '8901764012340',
       '221151012128': '8901764012340',
       // 7. Chocolate
-      '125221011199': '8901571001234',
       '225221441214': '8901571001234',
       '72518144': '8901571001234',
       // 8. Detergent
-      '112125192222': '8901030123456',
       '8901030123456': '8901030123456',
       // 9. Bottled Water
       '2112220022224': '8901058001234',
       // 10. Coffee Powder
-      '225159091192': '8901725901234',
-      '129119757282': '8901725901234',
       '50215515': '8901725901234',
       '121159002292': '8901725901234',
     };
@@ -350,13 +341,6 @@ class FirebaseService {
         }
       }
       return diffs <= 2;
-    }
-
-    // Match candidate against known sample product barcodes
-    for (final prod in builtInSampleProducts.values) {
-      if (isOpticalMisreadMatch(clean, prod.barcode)) {
-        candidates.add(prod.barcode);
-      }
     }
 
     // 1. Direct document ID lookup in root 'products' collection
@@ -469,11 +453,6 @@ class FirebaseService {
     for (final cand in candidates) {
       if (builtInSampleProducts.containsKey(cand)) {
         return builtInSampleProducts[cand];
-      }
-    }
-    for (final prod in builtInSampleProducts.values) {
-      if (isOpticalMisreadMatch(clean, prod.barcode)) {
-        return prod;
       }
     }
 
